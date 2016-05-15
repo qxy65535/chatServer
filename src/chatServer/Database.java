@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,6 +40,13 @@ public class Database {
 		if (resultSet.next()){
 			message.put("messageCode", Code.SUCCESS);
 			message.put("userID", resultSet.getInt("userID"));
+			resultSet = statement.executeQuery("SELECT userName FROM user WHERE userName<>'" + username + "'");
+			ArrayList<String> clients = new ArrayList<String>();
+			while (resultSet.next()){
+				clients.add(resultSet.getString(1));
+				System.out.println(resultSet.getString(1));
+			}
+			message.put("clients", clients);
 			//System.out.println(resultSet.getObject(1));
 		}
 		else {

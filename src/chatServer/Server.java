@@ -68,6 +68,8 @@ public class Server {
 			Map<String, Object> message = new HashMap<String, Object>();
 			message.put("time", getTime());
 			message.put("message", m);
+			message.put("chatTo", to);
+			message.put("from", from);
 			
 			byte[] data = convertToByte(message);
 			DatagramPacket sendPacket = new DatagramPacket(data, data.length, 
