@@ -3,12 +3,13 @@ package chatServer;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
 public class Database {
 
@@ -34,19 +35,24 @@ public class Database {
 		ResultSet resultSet;
 		System.out.println(username +"  "+ password);
 		resultSet = statement.executeQuery("SELECT * FROM user WHERE userName='" + username + "' AND password='" + password + "'");
-		ResultSetMetaData data = resultSet.getMetaData();
+//		ResultSetMetaData data = resultSet.getMetaData();
 		
 		Map<String, Object> message = new HashMap<String, Object>();
 		if (resultSet.next()){
 			message.put("messageCode", Code.SUCCESS);
 			message.put("userID", resultSet.getInt("userID"));
-			resultSet = statement.executeQuery("SELECT userName FROM user WHERE userName<>'" + username + "'");
-			ArrayList<String> clients = new ArrayList<String>();
-			while (resultSet.next()){
-				clients.add(resultSet.getString(1));
-				System.out.println(resultSet.getString(1));
-			}
-			message.put("clients", clients);
+			
+			getFriendList(username, message);
+			
+			//System.out.println(message.get("friend"));
+			
+//			resultSet = statement.executeQuery("SELECT userName FROM user WHERE userName<>'" + username + "'");
+//			ArrayList<String> clients = new ArrayList<String>();
+//			while (resultSet.next()){
+//				clients.add(resultSet.getString(1));
+//				System.out.println(resultSet.getString(1));
+//			}
+//			message.put("clients", clients);
 			//System.out.println(resultSet.getObject(1));
 		}
 		else {
@@ -55,12 +61,31 @@ public class Database {
 		return message;
 	}
 	
-	public static void AddUser(Map<String, Object> map) throws SQLException{
-		String name = (String)map.get("userName");
-		String password = (String)map.get("password");
+	private static void getFriendList(String username, Map<String, Object> message) throws SQLException{
+		ResultSet resultSet;
+		ArrayList<Integer> friendID = new ArrayList<Integer>();
+		ArrayList<String> friendName = new ArrayList<String>();
+		
+		resultSet = statement.executeQuery("SELECT friendID,friendName FROM user,friend"
+				+ " WHERE userName='" + username + "' AND user.userID=friend.userID");
+		
+		while (resultSet.next()){
+			friendID.add(resultSet.getInt(1));
+			friendName.add(resultSet.getString(2));
+			//System.out.println(resultSet.getString(1));
+		}
+		message.put("friendID", friendID);
+		message.put("friendName", friendName);
+	}
+	
+	public static Map<String, Object> AddUser(Map<String, Object> userInfo) throws SQLException, MySQLIntegrityConstraintViolationException{
+		String name = (String)userInfo.get("username");
+		String password = (String)userInfo.get("password");
 
 		statement.execute("INSERT INTO user SET userName='" + name +"',"+ "password='" + password + "'");
 		
+		return userLogin(userInfo);
 	}
+	
 
 }

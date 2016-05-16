@@ -15,7 +15,7 @@ public class User implements Runnable{
 	private InetAddress address;
 	private int port;
 	
-	public User(DatagramSocket socket, Map<String, Object> userInfo, int userId){
+	public User(DatagramSocket socket, Map<String, Object> userInfo, int userID){
 		this.socket = socket;
 		username = (String) userInfo.get("username");
 		password = (String) userInfo.get("password");
@@ -24,6 +24,14 @@ public class User implements Runnable{
 	
 	public void run(){
 		
+	}
+	
+	public int getID(){
+		return userID;
+	}
+	
+	public String getUsername(){
+		return username;
 	}
 	
 	public void setAddress(InetAddress address){

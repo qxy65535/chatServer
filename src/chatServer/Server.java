@@ -18,12 +18,14 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
+
 public class Server {
 	
 	private DatagramSocket socket;
 	private DatagramPacket receivePacket;
 	private ExecutorService executorService;
-	private Map<String, Object> userList;
+	private Map<Integer, Object> userList;
 	
 	public Server(){
 		try{
@@ -32,7 +34,7 @@ public class Server {
 			e.printStackTrace();
 		}
 		executorService = Executors.newCachedThreadPool();
-		userList = new HashMap<String, Object>();
+		userList = new HashMap<Integer, Object>();
 		
 	}
 	
@@ -45,12 +47,15 @@ public class Server {
 			socket.receive(receivePacket);
 		
 			message = convertToMap(receivePacket.getData());
-			if ("login".equals(message.get("type"))){
-				addClient(message, receivePacket);
+			if ("login".equals(message.get("type")) || "signUp".equals(message.get("type"))){
+				addClient(message, receivePacket, (String) message.get("type"));
 			}
 			else if ("message".equals(message.get("type"))){
-				if (userList.get((String) message.get("username")) != null){
-					sendPacket((String) message.get("username"), (String) message.get("chatTo"), (String) message.get("message"));
+				System.out.println(message);
+				System.out.println(userList);
+				if (userList.get((Integer) message.get("userID")) != null){
+					System.out.println("!!!!!");
+					sendPacket((Integer) message.get("userID"), (Integer) message.get("chatToID"), (String) message.get("message"));
 				}
 			}
 //			System.out.println("username:" + message.get("userName"));
@@ -63,14 +68,17 @@ public class Server {
 		
 	}
 	
-	public void sendPacket(String from, String to, String m){
+	public void sendPacket(int from, int to, String m){
 		try{
 			Map<String, Object> message = new HashMap<String, Object>();
 			message.put("time", getTime());
 			message.put("message", m);
-			message.put("chatTo", to);
-			message.put("from", from);
+			message.put("chatToID", to);
+			message.put("chatToUsername", ((User) userList.get(to)).getUsername());
+			message.put("fromID", from);
+			message.put("sername", ((User) userList.get(from)).getUsername());
 			
+			System.out.println(userList);
 			byte[] data = convertToByte(message);
 			DatagramPacket sendPacket = new DatagramPacket(data, data.length, 
 					((User) userList.get(to)).getAddress(), ((User) userList.get(to)).getPort());
@@ -125,27 +133,44 @@ public class Server {
 		  return null;
 	}
 	
-	private void addClient(Map<String, Object> userInfo, DatagramPacket receivePacket){
+	private void addClient(Map<String, Object> userInfo, DatagramPacket receivePacket, String type){
 		Map<String, Object> message;
 		try{
-			message = Database.userLogin(userInfo);
-			if ((int) message.get("messageCode") == Code.SUCCESS){
-				User user = new User(socket, userInfo, (int) message.get("userID"));
-				executorService.execute(user);
+			if ("login".equals(type))
+				message = Database.userLogin(userInfo);
+			else if ("signUp".equals(type))
+				message = Database.AddUser(userInfo);
+			else
+				throw new Exception();
+			if ((Integer) message.get("messageCode") == Code.SUCCESS){
+				User user = new User(socket, userInfo, (Integer) message.get("userID"));
+				//executorService.execute(user);
 				
 				user.setAddress(receivePacket.getAddress());
 				user.setPort(receivePacket.getPort());
 
-				userList.put((String) userInfo.get("username"), user);
+				System.out.println(message);
+				userList.put((Integer) message.get("userID"), user);
+				System.out.println(userList);
 
 			}
 			
 			sendResponseMessage(message);
 			
-		}catch (SQLException e){
-			e.printStackTrace();
+		}catch(MySQLIntegrityConstraintViolationException e0){
+			e0.printStackTrace();
+			message = new HashMap<String, Object>();
+			message.put("messageCode", Code.DUP_USERNAME);
+			sendResponseMessage(message);
+		}catch (SQLException e1){
+			e1.printStackTrace();
 			message = new HashMap<String, Object>();
 			message.put("messageCode", Code.SQL_EXCEPTION);
+			sendResponseMessage(message);
+		}catch (Exception e2){
+			e2.printStackTrace();
+			message = new HashMap<String, Object>();
+			message.put("messageCode", Code.UNKNOW_ERROR);
 			sendResponseMessage(message);
 		}
 		
@@ -160,7 +185,7 @@ public class Server {
 	public static void main(String[] args){
 		
 		Database data = new Database();
-		Server server = new Server();
+		final Server server = new Server();
 		
 		new Thread(new Runnable(){
 			public void run(){

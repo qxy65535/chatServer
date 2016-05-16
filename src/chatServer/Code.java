@@ -6,4 +6,6 @@ public class Code {
 	public static final int TYPE_MESSAGE = 102;
 	public static final int USER_INFO_ERROR = 405;
 	public static final int SQL_EXCEPTION = 406;
+	public static final int DUP_USERNAME = 407;
+	public static final int UNKNOW_ERROR = 408;
 }
