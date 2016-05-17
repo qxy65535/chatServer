@@ -78,11 +78,35 @@ public class Database {
 		message.put("friendName", friendName);
 	}
 	
+	public static Map<String, Object> AddFriend(Map<String, Object> info) throws SQLException{
+		String name = (String)info.get("friendName");
+		
+		ResultSet resultSet;
+		resultSet = statement.executeQuery("SELECT userName,userID FROM user WHERE userName='" + name +"'");
+		
+		Map<String, Object> friendInfo = new HashMap<String, Object>();
+		if (resultSet.next()){
+			int id = resultSet.getInt(2);
+			friendInfo.put("username", name);
+			friendInfo.put("userID", id);
+			friendInfo.put("messageCode", Code.SUCCESS);
+			statement.execute("INSERT INTO friend VALUES("
+					+ info.get("userID") + "," + id + ",'" + name + "')");
+		}
+		else {
+			friendInfo.put("messageCode", Code.USER_INFO_ERROR);
+		}
+		
+		return friendInfo;
+	}
+	
+	
 	public static Map<String, Object> AddUser(Map<String, Object> userInfo) throws SQLException, MySQLIntegrityConstraintViolationException{
 		String name = (String)userInfo.get("username");
 		String password = (String)userInfo.get("password");
 
-		statement.execute("INSERT INTO user SET userName='" + name +"',"+ "password='" + password + "'");
+		statement.execute("INSERT INTO user(userName,password)"
+				+ "VALUES('" + name + "','" + password + "')");
 		
 		return userLogin(userInfo);
 	}

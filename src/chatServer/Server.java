@@ -7,7 +7,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketException;
 import java.sql.SQLException;
 import java.text.DateFormat;
@@ -25,7 +26,11 @@ public class Server {
 	private DatagramSocket socket;
 	private DatagramPacket receivePacket;
 	private ExecutorService executorService;
-	private Map<Integer, Object> userList;
+	private static Map<Integer, Object> userList;
+	private ServerSocket server;
+	private Socket connection;
+	private static ObjectInputStream input;
+	private static ObjectOutputStream output;
 	
 	public Server(){
 		try{
@@ -34,7 +39,50 @@ public class Server {
 			e.printStackTrace();
 		}
 		executorService = Executors.newCachedThreadPool();
+		
+		try{
+			server = new ServerSocket(12344);
+
+		}catch (IOException e){
+			e.printStackTrace();
+		}
+
 		userList = new HashMap<Integer, Object>();
+		
+		
+	}
+	
+	public synchronized void connectClients(){
+		Map<String, Object> message;
+		try {
+			connection = server.accept();
+			output = new ObjectOutputStream(connection.getOutputStream());
+			input = new ObjectInputStream(connection.getInputStream());
+			//output = new ObjectOutputStream(connection.getOutputStream());
+			
+			message = (Map<String, Object>) input.readObject();
+			
+			if ("login".equals(message.get("type")) || "signUp".equals(message.get("type"))){
+				addClient(message, /*eceivePacket, */(String) message.get("type"), connection, input, output);
+			}
+			else if ("addFriend".equals(message.get("type"))){
+				addFriend(message /*receivePacket, */);
+			}
+			
+		}catch (IOException | ClassNotFoundException e){
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public void sendResponse(Object message){
+		try {
+			//output = new ObjectOutputStream(connection.getOutputStream());
+			output.writeObject(message);
+			output.flush();
+		}catch (IOException e){
+			e.printStackTrace();
+		}
 		
 	}
 	
@@ -47,16 +95,20 @@ public class Server {
 			socket.receive(receivePacket);
 		
 			message = convertToMap(receivePacket.getData());
-			if ("login".equals(message.get("type")) || "signUp".equals(message.get("type"))){
-				addClient(message, receivePacket, (String) message.get("type"));
-			}
-			else if ("message".equals(message.get("type"))){
+//			if ("login".equals(message.get("type")) || "signUp".equals(message.get("type"))){
+//				//addClient(message, receivePacket, (String) message.get("type"));
+//			}
+			if ("message".equals(message.get("type"))){
 				System.out.println(message);
 				System.out.println(userList);
 				if (userList.get((Integer) message.get("userID")) != null){
 					System.out.println("!!!!!");
+					System.out.println("packet: " + receivePacket.getPort());
 					sendPacket((Integer) message.get("userID"), (Integer) message.get("chatToID"), (String) message.get("message"));
 				}
+			}
+			else if ("addFriend".equals(message.get("type"))){
+				//addFriend(message, receivePacket);
 			}
 //			System.out.println("username:" + message.get("userName"));
 //			System.out.println("password:" + message.get("password"));
@@ -85,7 +137,7 @@ public class Server {
 			
 			socket.send(sendPacket);
 			
-		}catch (IOException e){
+		}catch (IOException | NullPointerException e){
 			e.printStackTrace();
 		}
 	}
@@ -133,8 +185,28 @@ public class Server {
 		  return null;
 	}
 	
-	private void addClient(Map<String, Object> userInfo, DatagramPacket receivePacket, String type){
-		Map<String, Object> message;
+	private void addFriend(Map<String, Object> user /*DatagramPacket receivePacket, */){
+		Map<String, Object> message = new HashMap<String, Object>();
+		
+		try{
+			message = Database.AddFriend(user);
+			
+			//sendResponseMessage(message);
+			//sendResponse(message);
+		}catch (SQLException e){
+			e.printStackTrace();
+			//message = new HashMap<String, Object>();
+			message.put("messageCode", Code.SQL_EXCEPTION);
+			//sendResponseMessage(message);
+		}finally {
+			message.put("type", "addFriendResponse");
+			sendResponse(message);
+		}
+	}
+	
+	private void addClient(Map<String, Object> userInfo, /*DatagramPacket receivePacket, */String type, Socket connection,
+			ObjectInputStream input, ObjectOutputStream output){
+		Map<String, Object> message = new HashMap<String, Object>();
 		try{
 			if ("login".equals(type))
 				message = Database.userLogin(userInfo);
@@ -142,12 +214,16 @@ public class Server {
 				message = Database.AddUser(userInfo);
 			else
 				throw new Exception();
+			System.out.println("000dsaddqw");
 			if ((Integer) message.get("messageCode") == Code.SUCCESS){
-				User user = new User(socket, userInfo, (Integer) message.get("userID"));
-				//executorService.execute(user);
+				User user = new User(connection, input, output, userInfo, (Integer) message.get("userID"));
+				executorService.execute(user);
 				
-				user.setAddress(receivePacket.getAddress());
-				user.setPort(receivePacket.getPort());
+				//user.setAddress(receivePacket.getAddress());
+				//user.setPort(receivePacket.getPort());
+				user.setAddress(connection.getInetAddress());
+				user.setPort((Integer) userInfo.get("port"));
+				System.out.print("connection: " + connection.getPort());
 
 				System.out.println(message);
 				userList.put((Integer) message.get("userID"), user);
@@ -155,25 +231,33 @@ public class Server {
 
 			}
 			
-			sendResponseMessage(message);
+			//sendResponseMessage(message);
 			
 		}catch(MySQLIntegrityConstraintViolationException e0){
 			e0.printStackTrace();
-			message = new HashMap<String, Object>();
+			//message = new HashMap<String, Object>();
 			message.put("messageCode", Code.DUP_USERNAME);
-			sendResponseMessage(message);
+			//sendResponseMessage(message);
 		}catch (SQLException e1){
 			e1.printStackTrace();
-			message = new HashMap<String, Object>();
+			//message = new HashMap<String, Object>();
 			message.put("messageCode", Code.SQL_EXCEPTION);
-			sendResponseMessage(message);
+			//sendResponseMessage(message);
 		}catch (Exception e2){
 			e2.printStackTrace();
-			message = new HashMap<String, Object>();
+			//message = new HashMap<String, Object>();
 			message.put("messageCode", Code.UNKNOW_ERROR);
-			sendResponseMessage(message);
+			//sendResponseMessage(message);
+		}finally {
+			System.out.println("111dsaddqw");
+			sendResponse(message);
 		}
 		
+	}
+	
+	public static void logout(int id){
+		userList.remove(id);
+		System.out.println(userList);
 	}
 	
 	public String getTime(){
@@ -193,6 +277,14 @@ public class Server {
 					server.receivePacket();
 			}
 		}).start();
+		
+		new Thread(new Runnable(){
+			public void run(){
+				while (true){
+					server.connectClients();
+				}
+			}
+		}).start();;
 		
 	}
 }

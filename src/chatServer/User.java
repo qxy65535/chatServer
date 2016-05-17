@@ -1,8 +1,12 @@
 package chatServer;
 
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.InetAddress;
+import java.net.Socket;
+import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.Map;
 
 public class User implements Runnable{
@@ -10,20 +14,41 @@ public class User implements Runnable{
 	private String username;
 	private String password;
 	private int userID;
-	private DatagramSocket socket;
-	private DatagramPacket receivePacket;
+	private Socket socket;
+	private ObjectInputStream input;
+	private ObjectOutputStream output;
+	//private DatagramPacket receivePacket;
 	private InetAddress address;
 	private int port;
+	Map<String, Object> message;
 	
-	public User(DatagramSocket socket, Map<String, Object> userInfo, int userID){
+	public User(Socket socket, ObjectInputStream input, ObjectOutputStream output, Map<String, Object> userInfo, int userID){
 		this.socket = socket;
+		this.input = input; 
+		this.output = output;
 		username = (String) userInfo.get("username");
 		password = (String) userInfo.get("password");
 		this.userID = userID;
 	}
 	
 	public void run(){
-		
+		while (true){
+			try{
+				message = (Map<String, Object>) input.readObject();
+				if ("addFriend".equals(message.get("type"))){
+					addFriend(message /*receivePacket, */);
+				}
+				else if ("logout".equals(message.get("type"))){
+					output.close();
+					input.close();
+					socket.close();
+					Server.logout(userID);
+					break;
+				}
+			}catch (ClassNotFoundException | IOException e){
+				e.printStackTrace();
+			}
+		}
 	}
 	
 	public int getID(){
@@ -48,6 +73,36 @@ public class User implements Runnable{
 	
 	public int getPort(){
 		return port;
+	}
+	
+	private void addFriend(Map<String, Object> user /*DatagramPacket receivePacket, */){
+		Map<String, Object> message = new HashMap<String, Object>();
+		
+		try{
+			message = Database.AddFriend(user);
+			
+			//sendResponseMessage(message);
+			//sendResponse(message);
+		}catch (SQLException e){
+			e.printStackTrace();
+			//message = new HashMap<String, Object>();
+			message.put("messageCode", Code.SQL_EXCEPTION);
+			//sendResponseMessage(message);
+		}finally {
+			message.put("type", "addFriendResponse");
+			sendResponse(message);
+		}
+	}
+	
+	public void sendResponse(Object message){
+		try {
+			//output = new ObjectOutputStream(connection.getOutputStream());
+			output.writeObject(message);
+			output.flush();
+		}catch (IOException e){
+			e.printStackTrace();
+		}
+		
 	}
 }
 
