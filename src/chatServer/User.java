@@ -9,6 +9,8 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
+
 public class User implements Runnable{
 	
 	private String username;
@@ -33,21 +35,39 @@ public class User implements Runnable{
 	
 	public void run(){
 		while (true){
-			try{
+			try {
 				message = (Map<String, Object>) input.readObject();
-				if ("addFriend".equals(message.get("type"))){
-					addFriend(message /*receivePacket, */);
-				}
-				else if ("logout".equals(message.get("type"))){
+			}catch (ClassNotFoundException | IOException e){
+				e.printStackTrace();
+				try {
 					output.close();
 					input.close();
 					socket.close();
 					Server.logout(userID);
+				}catch (IOException e2){
+					e2.printStackTrace();
+				}
+				break;
+			}
+			
+
+			if ("addFriend".equals(message.get("type"))){
+				addFriend(message /*receivePacket, */);
+			}
+			else if ("logout".equals(message.get("type"))){
+				try {
+					output.close();
+					input.close();
+					socket.close();
+					Server.logout(userID);
+					
+				}catch (IOException e){
+					e.printStackTrace();
+				}finally {
 					break;
 				}
-			}catch (ClassNotFoundException | IOException e){
-				e.printStackTrace();
 			}
+			
 		}
 	}
 	
@@ -83,6 +103,8 @@ public class User implements Runnable{
 			
 			//sendResponseMessage(message);
 			//sendResponse(message);
+		}catch(MySQLIntegrityConstraintViolationException e0){
+			message.put("messageCode", Code.DUP_USERNAME);
 		}catch (SQLException e){
 			e.printStackTrace();
 			//message = new HashMap<String, Object>();
@@ -102,7 +124,6 @@ public class User implements Runnable{
 		}catch (IOException e){
 			e.printStackTrace();
 		}
-		
 	}
 }
 

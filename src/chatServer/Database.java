@@ -43,17 +43,7 @@ public class Database {
 			message.put("userID", resultSet.getInt("userID"));
 			
 			getFriendList(username, message);
-			
-			//System.out.println(message.get("friend"));
-			
-//			resultSet = statement.executeQuery("SELECT userName FROM user WHERE userName<>'" + username + "'");
-//			ArrayList<String> clients = new ArrayList<String>();
-//			while (resultSet.next()){
-//				clients.add(resultSet.getString(1));
-//				System.out.println(resultSet.getString(1));
-//			}
-//			message.put("clients", clients);
-			//System.out.println(resultSet.getObject(1));
+
 		}
 		else {
 			message.put("messageCode", Code.USER_INFO_ERROR);
@@ -78,7 +68,7 @@ public class Database {
 		message.put("friendName", friendName);
 	}
 	
-	public static Map<String, Object> AddFriend(Map<String, Object> info) throws SQLException{
+	public static Map<String, Object> AddFriend(Map<String, Object> info) throws SQLException, MySQLIntegrityConstraintViolationException{
 		String name = (String)info.get("friendName");
 		
 		ResultSet resultSet;

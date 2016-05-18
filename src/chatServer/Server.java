@@ -142,23 +142,7 @@ public class Server {
 		}
 	}
 	
-//	public void sendResponseMessage(Map<String, Object> message){
-//		
-//		try{
-//
-//			byte[] data = convertToByte(message);
-//			DatagramPacket sendPacket = new DatagramPacket(data, data.length, 
-//					receivePacket.getAddress(), receivePacket.getPort());
-//			
-//			socket.send(sendPacket);
-//			
-//			//System.out.println(code + "     " + String.valueOf(code));
-//			
-//		}catch(IOException e){
-//			e.printStackTrace();
-//		}
-//	}
-	
+
 	private Map<String, Object> convertToMap(byte[] data) {
 		try {
 			ByteArrayInputStream bais = new ByteArrayInputStream(data);
