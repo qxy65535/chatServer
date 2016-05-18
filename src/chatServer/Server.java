@@ -34,7 +34,7 @@ public class Server {
 	
 	public Server(){
 		try{
-			socket = new DatagramSocket(12345);
+			socket = new DatagramSocket(54321);
 		}catch (SocketException e){
 			e.printStackTrace();
 		}
@@ -128,7 +128,7 @@ public class Server {
 			message.put("chatToID", to);
 			message.put("chatToUsername", ((User) userList.get(to)).getUsername());
 			message.put("fromID", from);
-			message.put("sername", ((User) userList.get(from)).getUsername());
+			message.put("fromName", ((User) userList.get(from)).getUsername());
 			
 			System.out.println(userList);
 			byte[] data = convertToByte(message);
@@ -142,22 +142,22 @@ public class Server {
 		}
 	}
 	
-	public void sendResponseMessage(Map<String, Object> message){
-		
-		try{
-
-			byte[] data = convertToByte(message);
-			DatagramPacket sendPacket = new DatagramPacket(data, data.length, 
-					receivePacket.getAddress(), receivePacket.getPort());
-			
-			socket.send(sendPacket);
-			
-			//System.out.println(code + "     " + String.valueOf(code));
-			
-		}catch(IOException e){
-			e.printStackTrace();
-		}
-	}
+//	public void sendResponseMessage(Map<String, Object> message){
+//		
+//		try{
+//
+//			byte[] data = convertToByte(message);
+//			DatagramPacket sendPacket = new DatagramPacket(data, data.length, 
+//					receivePacket.getAddress(), receivePacket.getPort());
+//			
+//			socket.send(sendPacket);
+//			
+//			//System.out.println(code + "     " + String.valueOf(code));
+//			
+//		}catch(IOException e){
+//			e.printStackTrace();
+//		}
+//	}
 	
 	private Map<String, Object> convertToMap(byte[] data) {
 		try {
@@ -269,7 +269,7 @@ public class Server {
 	public static void main(String[] args){
 		
 		Database data = new Database();
-		final Server server = new Server();
+		Server server = new Server();
 		
 		new Thread(new Runnable(){
 			public void run(){
