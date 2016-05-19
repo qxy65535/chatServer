@@ -104,7 +104,11 @@ public class Server {
 				if (userList.get((Integer) message.get("userID")) != null){
 					System.out.println("!!!!!");
 					System.out.println("packet: " + receivePacket.getPort());
-					sendPacket((Integer) message.get("userID"), (Integer) message.get("chatToID"), (String) message.get("message"));
+					if (userList.get((Integer) message.get("chatToID")) != null)
+						sendPacket((Integer) message.get("userID"), (Integer) message.get("chatToID"), (String) message.get("message"));
+					else
+						sendAutoPacket((Integer) message.get("chatToID"), (Integer) message.get("userID"), "对方用户不在线，无法收到您的消息！");
+				
 				}
 			}
 			else if ("addFriend".equals(message.get("type"))){
@@ -118,6 +122,28 @@ public class Server {
 		}
 		//sendPacket();
 		
+	}
+	
+	public void sendAutoPacket(int autoFrom, int to, String m){
+		try{
+			Map<String, Object> message = new HashMap<String, Object>();
+			message.put("time", getTime());
+			message.put("message", m);
+			message.put("chatToID", to);
+			message.put("chatToUsername", ((User) userList.get(to)).getUsername());
+			message.put("fromID", autoFrom);
+			message.put("fromName", "系统消息");
+			
+			System.out.println(userList);
+			byte[] data = convertToByte(message);
+			DatagramPacket sendPacket = new DatagramPacket(data, data.length, 
+					((User) userList.get(to)).getAddress(), ((User) userList.get(to)).getPort());
+			
+			socket.send(sendPacket);
+			
+		}catch (IOException | NullPointerException e){
+			e.printStackTrace();
+		}
 	}
 	
 	public void sendPacket(int from, int to, String m){
