@@ -41,7 +41,7 @@ public class Server {
 		executorService = Executors.newCachedThreadPool();
 		
 		try{
-			server = new ServerSocket(12344);
+			server = new ServerSocket(54322);
 
 		}catch (IOException e){
 			e.printStackTrace();
@@ -58,16 +58,13 @@ public class Server {
 			connection = server.accept();
 			output = new ObjectOutputStream(connection.getOutputStream());
 			input = new ObjectInputStream(connection.getInputStream());
-			//output = new ObjectOutputStream(connection.getOutputStream());
 			
 			message = (Map<String, Object>) input.readObject();
 			
 			if ("login".equals(message.get("type")) || "signUp".equals(message.get("type"))){
 				addClient(message, /*eceivePacket, */(String) message.get("type"), connection, input, output);
 			}
-			else if ("addFriend".equals(message.get("type"))){
-				addFriend(message /*receivePacket, */);
-			}
+
 			
 		}catch (IOException | ClassNotFoundException e){
 			e.printStackTrace();
@@ -77,7 +74,6 @@ public class Server {
 	
 	public void sendResponse(Object message){
 		try {
-			//output = new ObjectOutputStream(connection.getOutputStream());
 			output.writeObject(message);
 			output.flush();
 		}catch (IOException e){
@@ -95,9 +91,6 @@ public class Server {
 			socket.receive(receivePacket);
 		
 			message = convertToMap(receivePacket.getData());
-//			if ("login".equals(message.get("type")) || "signUp".equals(message.get("type"))){
-//				//addClient(message, receivePacket, (String) message.get("type"));
-//			}
 			if ("message".equals(message.get("type"))){
 				System.out.println(message);
 				System.out.println(userList);
@@ -111,11 +104,6 @@ public class Server {
 				
 				}
 			}
-			else if ("addFriend".equals(message.get("type"))){
-				//addFriend(message, receivePacket);
-			}
-//			System.out.println("username:" + message.get("userName"));
-//			System.out.println("password:" + message.get("password"));
 
 		}catch(IOException e){
 			e.printStackTrace();
@@ -195,26 +183,7 @@ public class Server {
 		  return null;
 	}
 	
-	private void addFriend(Map<String, Object> user /*DatagramPacket receivePacket, */){
-		Map<String, Object> message = new HashMap<String, Object>();
-		
-		try{
-			message = Database.AddFriend(user);
-			
-			//sendResponseMessage(message);
-			//sendResponse(message);
-		}catch (SQLException e){
-			e.printStackTrace();
-			//message = new HashMap<String, Object>();
-			message.put("messageCode", Code.SQL_EXCEPTION);
-			//sendResponseMessage(message);
-		}finally {
-			message.put("type", "addFriendResponse");
-			sendResponse(message);
-		}
-	}
-	
-	private void addClient(Map<String, Object> userInfo, /*DatagramPacket receivePacket, */String type, Socket connection,
+	private void addClient(Map<String, Object> userInfo, String type, Socket connection,
 			ObjectInputStream input, ObjectOutputStream output){
 		Map<String, Object> message = new HashMap<String, Object>();
 		try{
@@ -229,8 +198,6 @@ public class Server {
 				User user = new User(connection, input, output, userInfo, (Integer) message.get("userID"));
 				executorService.execute(user);
 				
-				//user.setAddress(receivePacket.getAddress());
-				//user.setPort(receivePacket.getPort());
 				user.setAddress(connection.getInetAddress());
 				user.setPort((Integer) userInfo.get("port"));
 				System.out.print("connection: " + connection.getPort());
@@ -240,28 +207,21 @@ public class Server {
 				System.out.println(userList);
 
 			}
-			
-			//sendResponseMessage(message);
-			
+
 		}catch(MySQLIntegrityConstraintViolationException e0){
 			e0.printStackTrace();
-			//message = new HashMap<String, Object>();
 			message.put("messageCode", Code.DUP_USERNAME);
-			//sendResponseMessage(message);
 		}catch (SQLException e1){
 			e1.printStackTrace();
-			//message = new HashMap<String, Object>();
 			message.put("messageCode", Code.SQL_EXCEPTION);
-			//sendResponseMessage(message);
 		}catch (Exception e2){
 			e2.printStackTrace();
-			//message = new HashMap<String, Object>();
 			message.put("messageCode", Code.UNKNOW_ERROR);
-			//sendResponseMessage(message);
-		}finally {
-			System.out.println("111dsaddqw");
-			sendResponse(message);
 		}
+
+		System.out.println("111dsaddqw");
+		sendResponse(message);
+		connection = null;
 		
 	}
 	

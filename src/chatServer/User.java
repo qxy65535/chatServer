@@ -63,9 +63,8 @@ public class User implements Runnable{
 					
 				}catch (IOException e){
 					e.printStackTrace();
-				}finally {
-					break;
 				}
+				break;
 			}
 			
 		}
